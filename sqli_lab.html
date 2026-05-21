@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQLi Practice Lab</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #0f1525;
+    --bg3: #151d35;
+    --bg4: #1a2340;
+    --border: #1e2d50;
+    --border2: #2a3f6f;
+    --green: #00ff88;
+    --green2: #00cc6a;
+    --red: #ff4455;
+    --amber: #ffaa00;
+    --blue: #4488ff;
+    --purple: #aa66ff;
+    --text: #c8d8f0;
+    --text2: #6a85b0;
+    --text3: #3a5080;
+    --font: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .logo span { color: var(--text2); }
+
+  .score-bar {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .score-item { text-align: right; }
+  .score-label { font-size: 10px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .score-val { font-size: 16px; font-weight: 700; color: var(--green); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    height: calc(100vh - 57px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+
+  .sidebar-section {
+    margin-bottom: 4px;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 8px 16px 4px;
+  }
+
+  .lab-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    line-height: 1.4;
+  }
+
+  .lab-btn:hover { background: var(--bg3); color: var(--text); }
+  .lab-btn.active { background: var(--bg3); color: var(--green); border-left-color: var(--green); }
+
+  .lab-btn .lab-num {
+    font-size: 10px;
+    color: var(--text3);
+    display: block;
+  }
+
+  .lab-btn.solved .lab-num::before { content: '✓ '; color: var(--green); }
+  .lab-btn.solved { color: var(--text2); }
+
+  /* Main area */
+  .main {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    overflow: hidden;
+  }
+
+  .top-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel {
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .panel + .panel {
+    border-left: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  h2.lab-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .lab-desc {
+    color: var(--text2);
+    font-size: 12px;
+    margin-bottom: 16px;
+    line-height: 1.7;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .tag-insert { background: rgba(68,136,255,0.15); color: var(--blue); border: 1px solid rgba(68,136,255,0.3); }
+  .tag-update { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid rgba(255,170,0,0.3); }
+  .tag-delete { background: rgba(255,68,85,0.15); color: var(--red); border: 1px solid rgba(255,68,85,0.3); }
+
+  .hint-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .hint-box strong { color: var(--amber); }
+
+  .goal-box {
+    background: rgba(0,255,136,0.05);
+    border: 1px solid rgba(0,255,136,0.15);
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--green2);
+  }
+
+  .goal-box strong { color: var(--green); display: block; margin-bottom: 4px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* DB view */
+  .db-table {
+    margin-bottom: 16px;
+  }
+
+  .db-table-name {
+    font-size: 10px;
+    color: var(--purple);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  th {
+    background: var(--bg3);
+    color: var(--text3);
+    text-align: left;
+    padding: 5px 8px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+  }
+
+  td {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  tr.highlight td { background: rgba(0,255,136,0.08); color: var(--green); }
+  tr.danger td { background: rgba(255,68,85,0.08); color: var(--red); }
+
+  /* Bottom panel - terminal */
+  .bottom-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+  }
+
+  .terminal {
+    background: #060a10;
+    padding: 16px 20px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+
+  .terminal-line {
+    font-size: 12px;
+    line-height: 1.8;
+    margin-bottom: 2px;
+  }
+
+  .t-prompt { color: var(--green2); }
+  .t-query { color: var(--blue); }
+  .t-error { color: var(--red); }
+  .t-ok { color: var(--green); }
+  .t-info { color: var(--text3); }
+  .t-inject { color: var(--amber); font-weight: 700; }
+  .t-result { color: var(--purple); }
+
+  /* Input area */
+  .input-area {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .field-label {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .field-input {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field-input:focus { border-color: var(--blue); }
+  .field-input.injected { border-color: var(--amber); }
+
+  .query-preview {
+    background: #060a10;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text2);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .qp-keyword { color: #569cd6; }
+  .qp-string { color: #ce9178; }
+  .qp-inject { color: var(--amber); background: rgba(255,170,0,0.1); border-radius: 2px; }
+  .qp-comment { color: var(--text3); }
+
+  .submit-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    font-weight: 700;
+  }
+
+  .submit-btn:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .result-banner {
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    display: none;
+  }
+
+  .result-banner.success {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.25);
+    color: var(--green);
+    display: block;
+  }
+
+  .result-banner.fail {
+    background: rgba(255,68,85,0.08);
+    border: 1px solid rgba(255,68,85,0.25);
+    color: var(--red);
+    display: block;
+  }
+
+  .result-banner.info {
+    background: rgba(68,136,255,0.08);
+    border: 1px solid rgba(68,136,255,0.25);
+    color: var(--blue);
+    display: block;
+  }
+
+  .solved-overlay {
+    background: rgba(0,255,136,0.04);
+    border: 1px solid rgba(0,255,136,0.2);
+    border-radius: 4px;
+    padding: 12px;
+    text-align: center;
+    color: var(--green);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    display: none;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">SQL<span>i</span> Practice Lab</div>
+  <div style="font-size:11px;color:var(--text3)">INSERT · UPDATE · DELETE injection drills</div>
+  <div class="score-bar">
+    <div class="score-item">
+      <div class="score-label">Solved</div>
+      <div class="score-val" id="solved-count">0/9</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main">
+    <div class="top-panel">
+      <div class="panel" id="lab-info"></div>
+      <div class="panel" id="db-view"></div>
+    </div>
+    <div class="bottom-panel">
+      <div class="terminal" id="terminal">
+        <div class="terminal-line t-info">// SQL query terminal — submit a payload to see results</div>
+      </div>
+      <div class="input-area" id="input-area"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DB STATE ====================
+let db = {};
+let solvedLabs = new Set();
+
+function resetDb() {
+  db = {
+    users: [
+      { id: 1, username: 'admin', email: 'admin@corp.com', password: 'S3cr3t!Pass', role: 'admin' },
+      { id: 2, username: 'alice', email: 'alice@corp.com', password: 'alice123', role: 'user' },
+      { id: 3, username: 'bob',   email: 'bob@corp.com',   password: 'bob456',   role: 'user' },
+    ],
+    products: [
+      { id: 1, name: 'Widget Pro', price: 99.99, stock: 50 },
+      { id: 2, name: 'Gadget X',   price: 149.99, stock: 30 },
+      { id: 3, name: 'Doohickey',  price: 19.99,  stock: 200 },
+    ],
+    orders: [
+      { id: 1, user_id: 2, product: 'Widget Pro', amount: 199.98, status: 'pending' },
+      { id: 2, user_id: 3, product: 'Gadget X',   amount: 149.99, status: 'shipped' },
+    ],
+    feedback: [
+      { id: 1, user_id: 2, message: 'Great product!', visible: 1 },
+    ]
+  };
+}
+resetDb();
+
+// ==================== LABS ====================
+const labs = [
+  // ---- INSERT ----
+  {
+    id: 1, type: 'INSERT', title: 'Register as Admin',
+    desc: 'The registration form inserts new users with role=\'user\'. The users table has a role column. Can you inject into the username field to register yourself with role=\'admin\'?',
+    goal: 'Insert a row with role = \'admin\' using the registration form.',
+    hint: 'The INSERT query has a fixed role value. What if you close the VALUES early and inject your own role?',
+    hint2: 'Try: anything\', \'x@x.com\', \'pass\', \'admin\')--',
+    table: 'users',
+    highlight: null,
+    fields: [
+      { name: 'username', label: 'Username', default: '' },
+      { name: 'email',    label: 'Email',    default: 'attacker@evil.com' },
+      { name: 'password', label: 'Password', default: 'hacked' },
+    ],
+    buildQuery(f) {
+      return `INSERT INTO users (username, email, password, role)\nVALUES ('${f.username}', '${f.email}', '${f.password}', 'user')`;
+    },
+    check(f) {
+      const u = f.username;
+      // needs to close VALUES and inject admin role
+      return (u.includes("'") && u.toLowerCase().includes('admin') && (u.includes('--') || u.includes('#')));
+    },
+    execute(f) {
+      const u = f.username;
+      const isInjected = this.check(f);
+      if (isInjected) {
+        // parse injected role
+        const match = u.match(/['"]admin['"]/i);
+        db.users.push({ id: db.users.length+1, username: 'attacker', email: f.email, password: f.password, role: 'admin' });
+        return { success: true, msg: '✓ Lab solved! New admin user inserted. The role column was never exposed in the form but you injected it directly.', newRow: db.users.length-1 };
+      } else {
+        const safe = { id: db.users.length+1, username: f.username, email: f.email, password: f.password, role: 'user' };
+        db.users.push(safe);
+        return { success: false, msg: 'User inserted with role=user. Try injecting the role column.', newRow: db.users.length-1 };
+      }
+    }
+  },
+  {
+    id: 2, type: 'INSERT', title: 'Second-Order: Poison the Username',
+    desc: 'The app safely stores your username. But the password-change feature retrieves it and uses it unsafely: UPDATE users SET password=\'$newpass\' WHERE username=\'$stored_username\'. Register a poisoned username to hijack admin\'s password when you change yours.',
+    goal: 'Register with a username that, when used in a future UPDATE, changes the admin\'s password.',
+    hint: 'The UPDATE query will be: UPDATE users SET password=\'...\' WHERE username=\'YOUR_USERNAME\'. What username makes it update the admin row?',
+    hint2: 'Username: admin\'-- (when stored username is injected into UPDATE it comments out the rest)',
+    table: 'users',
+    fields: [
+      { name: 'username', label: 'Username (your poison payload)', default: '' },
+      { name: 'newpass',  label: 'New password (your password change)', default: 'pwned' },
+    ],
+    buildQuery(f) {
+      return `-- Step 1 (safe INSERT):\nINSERT INTO users (username, email, password, role)\nVALUES ('${f.username}', 'evil@x.com', 'mypass', 'user')\n\n-- Step 2 (vulnerable UPDATE using stored username):\nUPDATE users SET password='${f.newpass}'\nWHERE username='${f.username}'`;
+    },
+    check(f) {
+      const u = f.username;
+      return u.includes("admin'") && (u.includes('--') || u.includes('#'));
+    },
+    execute(f) {
+      if (this.check(f)) {
+        db.users[0].password = f.newpass;
+        return { success: true, msg: '✓ Lab solved! Second-order injection: your stored username poisoned a later UPDATE query and changed admin\'s password to: ' + f.newpass, danger: 0 };
+      } else {
+        return { success: false, msg: 'Username stored safely. The UPDATE ran on your own account only. Hint: make the WHERE clause target admin.' };
+      }
+    }
+  },
+  {
+    id: 3, type: 'INSERT', title: 'INSERT Exfil via Reflected Field',
+    desc: 'After registration your username is shown on your profile page. The username is inserted and then reflected. Can you insert a subquery as your username so the DB version is reflected back on the profile page?',
+    goal: 'Insert (SELECT version()) so it appears as your username on the profile page.',
+    hint: 'MySQL allows subqueries inside VALUES: \'\'||(SELECT @@version)||\'\'',
+    hint2: '\'||(SELECT @@version)||\'  or  (SELECT @@version)',
+    table: 'users',
+    fields: [
+      { name: 'username', label: 'Username (will be reflected on profile)', default: '' },
+      { name: 'email',    label: 'Email', default: 'x@x.com' },
+      { name: 'password', label: 'Password', default: 'pass' },
+    ],
+    buildQuery(f) {
+      return `INSERT INTO users (username, email, password, role)\nVALUES ('${f.username}', '${f.email}', '${f.password}', 'user')\n\n-- Profile page then shows:\nSELECT username FROM users WHERE id=LAST_INSERT_ID()`;
+    },
+    check(f) {
+      const u = f.username.toLowerCase();
+      return u.includes('select') && (u.includes('version') || u.includes('database') || u.includes('user()'));
+    },
+    execute(f) {
+      if (this.check(f)) {
+        const exfil = '8.0.32-MySQL Community Server';
+        db.users.push({ id: db.users.length+1, username: exfil, email: f.email, password: f.password, role: 'user' });
+        return { success: true, msg: `✓ Lab solved! Subquery executed. Profile page now shows your username as: "${exfil}" — DB version leaked through reflected INSERT field.`, newRow: db.users.length-1 };
+      } else {
+        db.users.push({ id: db.users.length+1, username: f.username, email: f.email, password: f.password, role: 'user' });
+        return { success: false, msg: 'Inserted normally. Try injecting a subquery that extracts DB info into the username field.', newRow: db.users.length-1 };
+      }
+    }
+  },
+
+  // ---- UPDATE ----
+  {
+    id: 4, type: 'UPDATE', title: 'Change Another User\'s Password',
+    desc: 'The profile update runs: UPDATE users SET email=\'$email\', password=\'$pass\' WHERE id=$your_id. You are logged in as alice (id=2). Can you change admin\'s password?',
+    goal: 'Change admin\'s (id=1) password to \'hacked\' without touching alice\'s account.',
+    hint: 'The WHERE clause uses your id. What if you inject into the password field to close early and add a new WHERE?',
+    hint2: 'Password field: hacked\' WHERE id=1--',
+    table: 'users',
+    highlight: null,
+    fields: [
+      { name: 'email',    label: 'Email', default: 'alice@corp.com' },
+      { name: 'password', label: 'New Password', default: '' },
+    ],
+    buildQuery(f) {
+      return `UPDATE users SET email='${f.email}', password='${f.password}'\nWHERE id=2`;
+    },
+    check(f) {
+      const p = f.password.toLowerCase();
+      return p.includes("'") && p.includes('where') && p.includes('id') && (p.includes('1') || p.includes('admin'));
+    },
+    execute(f) {
+      if (this.check(f)) {
+        const pwdMatch = f.password.match(/^(.+?)'\s*WHERE/i);
+        const newPwd = pwdMatch ? pwdMatch[1] : 'hacked';
+        db.users[0].password = newPwd;
+        return { success: true, msg: `✓ Lab solved! You injected a new WHERE clause. Admin's password is now: "${newPwd}". Alice's account was untouched.`, danger: 0 };
+      } else {
+        db.users[1].password = f.password;
+        db.users[1].email = f.email;
+        return { success: false, msg: 'Updated alice\'s profile normally. Inject into the password field to hijack the WHERE clause.' };
+      }
+    }
+  },
+  {
+    id: 5, type: 'UPDATE', title: 'Escalate Your Own Role',
+    desc: 'The profile update only allows changing email and password. The role column is not in the SET clause. The query is: UPDATE users SET email=\'$email\', password=\'$pass\' WHERE id=3 (you are bob). Can you add role=\'admin\' to the update?',
+    goal: 'Update bob\'s role to \'admin\' using the email or password field.',
+    hint: 'You can inject additional SET columns by closing early and appending more SET expressions.',
+    hint2: 'Email field: x@x.com\', role=\'admin\', password=\'irrelevant',
+    table: 'users',
+    fields: [
+      { name: 'email',    label: 'Email', default: '' },
+      { name: 'password', label: 'Password', default: 'bob456' },
+    ],
+    buildQuery(f) {
+      return `UPDATE users SET email='${f.email}', password='${f.password}'\nWHERE id=3`;
+    },
+    check(f) {
+      const e = f.email.toLowerCase();
+      return e.includes("'") && e.includes('role') && e.includes('admin');
+    },
+    execute(f) {
+      if (this.check(f)) {
+        db.users[2].role = 'admin';
+        db.users[2].email = 'x@x.com';
+        return { success: true, msg: '✓ Lab solved! You injected extra SET columns. Bob\'s role is now admin. The app only showed email/password fields but the role column was injectable.', danger: 2 };
+      } else {
+        db.users[2].email = f.email;
+        db.users[2].password = f.password;
+        return { success: false, msg: 'Bob\'s profile updated normally. Try injecting a role column assignment into the email field.' };
+      }
+    }
+  },
+  {
+    id: 6, type: 'UPDATE', title: 'Blind UPDATE — Time-Based Confirm',
+    desc: 'The app returns the same "Profile updated!" message whether the UPDATE worked or not. No output. Use time-based injection to confirm you can control the WHERE clause.',
+    goal: 'Inject SLEEP(5) into the UPDATE to confirm blind injection and then exfiltrate the admin password first character.',
+    hint: 'Inject into the password field to add a conditional SLEEP.',
+    hint2: 'pass\', email=IF(SUBSTRING((SELECT password FROM users WHERE id=1),1,1)=\'S\',SLEEP(5),0) WHERE id=3--',
+    table: 'users',
+    fields: [
+      { name: 'email',    label: 'Email', default: 'bob@corp.com' },
+      { name: 'password', label: 'Password (inject here)', default: '' },
+    ],
+    buildQuery(f) {
+      return `UPDATE users SET email='${f.email}', password='${f.password}'\nWHERE id=3`;
+    },
+    check(f) {
+      const p = f.password.toLowerCase();
+      return p.includes('sleep') || p.includes('if(') || p.includes('benchmark');
+    },
+    execute(f) {
+      if (this.check(f)) {
+        const hasCond = f.password.toLowerCase().includes('substring') && f.password.toLowerCase().includes('s3cr3t');
+        return { success: true, msg: hasCond
+          ? '✓ Lab solved! Blind exfil confirmed — SLEEP fired for char=\'S\'. Admin password starts with \'S\'. (Actual: S3cr3t!Pass). You can now iterate all characters.'
+          : '✓ Lab solved! SLEEP() injection detected — 5 second delay triggered. Blind UPDATE injection confirmed. Now refine with IF(SUBSTRING(...)) to exfiltrate char by char.' };
+      } else {
+        return { success: false, msg: 'No time-based injection detected. Try injecting SLEEP(5) or IF(condition, SLEEP(5), 0) into the password field.' };
+      }
+    }
+  },
+
+  // ---- DELETE ----
+  {
+    id: 7, type: 'DELETE', title: 'Delete All Records',
+    desc: 'A "delete my feedback" feature runs: DELETE FROM feedback WHERE id=$input AND user_id=2. Inject into the id parameter to delete ALL feedback rows.',
+    goal: 'Delete every row in the feedback table, not just your own.',
+    hint: 'Can you close the WHERE clause early and make it match everything?',
+    hint2: '1 OR 1=1--',
+    table: 'feedback',
+    fields: [
+      { name: 'id', label: 'Feedback ID to delete', default: '' },
+    ],
+    buildQuery(f) {
+      return `DELETE FROM feedback WHERE id=${f.id} AND user_id=2`;
+    },
+    check(f) {
+      const i = f.id.toLowerCase();
+      return i.includes('or') && (i.includes('1=1') || i.includes('true')) && (i.includes('--') || i.includes('#'));
+    },
+    execute(f) {
+      if (this.check(f)) {
+        db.feedback = [];
+        return { success: true, msg: '✓ Lab solved! OR 1=1 made the WHERE always true — every feedback row deleted. In a real app this could wipe a whole table of legitimate data.', wipeTable: 'feedback' };
+      } else {
+        const id = parseInt(f.id);
+        db.feedback = db.feedback.filter(r => !(r.id === id && r.user_id === 2));
+        return { success: false, msg: 'Deleted only your specific row (if it existed). Try making the WHERE always true to delete everything.' };
+      }
+    }
+  },
+  {
+    id: 8, type: 'DELETE', title: 'Stacked Query — Drop Table',
+    desc: 'The delete order endpoint runs: DELETE FROM orders WHERE id=$input. The DB driver supports stacked queries (multiple statements via semicolon). Can you drop the products table?',
+    goal: 'Use a stacked query to execute DROP TABLE products after the DELETE.',
+    hint: 'Semicolons separate statements in MySQL/MSSQL when multi-query is enabled.',
+    hint2: '1; DROP TABLE products--',
+    table: 'orders',
+    fields: [
+      { name: 'id', label: 'Order ID', default: '' },
+    ],
+    buildQuery(f) {
+      return `DELETE FROM orders WHERE id=${f.id}`;
+    },
+    check(f) {
+      const i = f.id.toLowerCase();
+      return i.includes(';') && i.includes('drop') && i.includes('products');
+    },
+    execute(f) {
+      if (this.check(f)) {
+        delete db.products;
+        return { success: true, msg: '✓ Lab solved! Stacked query executed: DELETE ran first, then DROP TABLE products wiped the entire products table. This is destructive — in a real pentest, document and stop.', dropTable: 'products' };
+      } else {
+        const id = parseInt(f.id);
+        db.orders = db.orders.filter(r => r.id !== id);
+        return { success: false, msg: 'Delete ran normally. Try using a semicolon to stack a second SQL statement.' };
+      }
+    }
+  },
+  {
+    id: 9, type: 'DELETE', title: 'Conditional DELETE — Blind Exfil',
+    desc: 'A DELETE endpoint: DELETE FROM orders WHERE id=$input. No output returned. Use a boolean condition inside DELETE to confirm data exists without destroying it.',
+    goal: 'Inject a subquery condition that only deletes if admin\'s password starts with \'S\' — proving you can extract data via conditional DELETE behaviour.',
+    hint: 'Make the DELETE conditional on a subquery. If the row gets deleted = condition TRUE.',
+    hint2: '2 AND (SELECT SUBSTRING(password,1,1) FROM users WHERE id=1)=\'S\'--',
+    table: 'orders',
+    fields: [
+      { name: 'id', label: 'Order ID (inject here)', default: '' },
+    ],
+    buildQuery(f) {
+      return `DELETE FROM orders WHERE id=${f.id}`;
+    },
+    check(f) {
+      const i = f.id.toLowerCase();
+      return i.includes('and') && i.includes('select') && i.includes('password') && i.includes('substring');
+    },
+    execute(f) {
+      if (this.check(f)) {
+        const condTrue = f.id.includes("'S'") || f.id.includes('"S"');
+        if (condTrue) {
+          db.orders = db.orders.filter(r => r.id !== 2);
+          return { success: true, msg: '✓ Lab solved! Condition was TRUE (password starts with \'S\') so order id=2 was deleted. This confirms admin password first char = \'S\'. Blind exfil via conditional DELETE behaviour.' };
+        } else {
+          return { success: true, msg: '✓ Lab solved! Subquery injected into DELETE. If you use =\'S\' the row deletes (TRUE). Any other char = no deletion (FALSE). You now have a blind data extraction oracle.' };
+        }
+      } else {
+        db.orders = db.orders.filter(r => r.id !== parseInt(f.id));
+        return { success: false, msg: 'Ran normally. Inject a subquery condition to turn this DELETE into a blind data extraction oracle.' };
+      }
+    }
+  }
+];
+
+// ==================== STATE ====================
+let currentLab = labs[0];
+let fieldValues = {};
+let terminalLines = [];
+let dbSnapshot = null;
+
+// ==================== RENDER ====================
+function renderSidebar() {
+  const sb = document.getElementById('sidebar');
+  const groups = { INSERT: [], UPDATE: [], DELETE: [] };
+  labs.forEach(l => groups[l.type].push(l));
+
+  sb.innerHTML = Object.entries(groups).map(([type, ls]) => `
+    <div class="sidebar-section">
+      <div class="sidebar-label">${type}</div>
+      ${ls.map(l => `
+        <button class="lab-btn ${l.id === currentLab.id ? 'active' : ''} ${solvedLabs.has(l.id) ? 'solved' : ''}"
+          onclick="selectLab(${l.id})">
+          <span class="lab-num">Lab ${l.id}</span>
+          ${l.title}
+        </button>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function renderLabInfo() {
+  const lab = currentLab;
+  const typeClass = { INSERT: 'tag-insert', UPDATE: 'tag-update', DELETE: 'tag-delete' };
+  document.getElementById('lab-info').innerHTML = `
+    <div class="panel-title">Lab Info</div>
+    <span class="tag ${typeClass[lab.type]}">${lab.type} injection</span>
+    <h2 class="lab-title">${lab.title}</h2>
+    <div class="lab-desc">${lab.desc}</div>
+    <div class="goal-box"><strong>Goal</strong>${lab.goal}</div>
+    <div class="hint-box">
+      <strong>Hint 1:</strong> ${lab.hint}<br><br>
+      <span id="hint2-wrap" style="display:none"><strong>Hint 2 (spoiler):</strong> <code style="color:var(--amber)">${lab.hint2}</code></span>
+      <a href="#" onclick="document.getElementById('hint2-wrap').style.display='block';return false;" 
+         style="color:var(--text3);font-size:11px;text-decoration:none" id="hint2-link">show hint 2 →</a>
+    </div>
+  `;
+}
+
+function renderDbView() {
+  const panel = document.getElementById('db-view');
+  let html = '<div class="panel-title">Database State</div>';
+  Object.entries(db).forEach(([tname, rows]) => {
+    html += `<div class="db-table"><div class="db-table-name">● ${tname}</div>`;
+    if (!rows || rows.length === 0) {
+      html += `<div style="color:var(--text3);font-size:12px;padding:6px 0">(empty)</div>`;
+    } else {
+      const cols = Object.keys(rows[0]);
+      html += `<table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+      rows.forEach((row, ri) => {
+        const cls = (dbSnapshot && JSON.stringify(row) !== JSON.stringify(dbSnapshot[tname]?.[ri])) ? 'highlight' : '';
+        html += `<tr class="${cls}">${cols.map(c=>`<td title="${row[c]}">${row[c]}</td>`).join('')}</tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+    html += '</div>';
+  });
+  panel.innerHTML = html;
+}
+
+function buildQueryHtml(query) {
+  const keywords = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'FROM', 'WHERE', 'INTO', 'VALUES', 'SET', 'AND', 'OR', 'DROP', 'TABLE', 'SLEEP', 'IF', 'SUBSTRING', 'NULL', 'UNION', 'LAST_INSERT_ID'];
+  let html = query;
+  // highlight injected parts (quotes broken)
+  // simple colorize
+  keywords.forEach(k => {
+    html = html.replace(new RegExp('\\b'+k+'\\b','g'), `<span class="qp-keyword">${k}</span>`);
+  });
+  // comments
+  html = html.replace(/(--[^\n]*)/g, '<span class="qp-comment">$1</span>');
+  html = html.replace(/(#[^\n]*)/g, '<span class="qp-comment">$1</span>');
+  return html;
+}
+
+function renderInputArea() {
+  const lab = currentLab;
+  fieldValues = {};
+  lab.fields.forEach(f => fieldValues[f.name] = f.default);
+
+  let html = '<div class="panel-title">Payload</div>';
+
+  lab.fields.forEach(f => {
+    html += `
+      <div class="field-group">
+        <label class="field-label">${f.label}</label>
+        <input class="field-input" id="field-${f.name}" value="${f.default}" 
+               oninput="onFieldChange('${f.name}', this.value)"
+               placeholder="enter payload...">
+      </div>`;
+  });
+
+  html += `
+    <div class="field-group">
+      <div class="field-label">Query Preview</div>
+      <div class="query-preview" id="query-preview">${buildQueryHtml(lab.buildQuery(fieldValues))}</div>
+    </div>
+    <button class="submit-btn" onclick="submitPayload()">▶ Execute Query</button>
+    <div class="result-banner" id="result-banner"></div>
+    <div class="solved-overlay" id="solved-overlay">✓ Lab Solved — move to next</div>
+    <button class="submit-btn" onclick="resetLab()" style="margin-top:4px;font-size:11px;color:var(--text3)">↺ Reset DB</button>
+  `;
+
+  document.getElementById('input-area').innerHTML = html;
+  if (solvedLabs.has(lab.id)) {
+    document.getElementById('solved-overlay').style.display = 'block';
+  }
+}
+
+function onFieldChange(name, val) {
+  fieldValues[name] = val;
+  const qp = document.getElementById('query-preview');
+  if (qp) qp.innerHTML = buildQueryHtml(currentLab.buildQuery(fieldValues));
+  const inp = document.getElementById('field-'+name);
+  if (inp) inp.className = 'field-input' + (val.includes("'") || val.includes(';') ? ' injected' : '');
+}
+
+function addTerminalLine(cls, text) {
+  terminalLines.push({ cls, text });
+  const t = document.getElementById('terminal');
+  const div = document.createElement('div');
+  div.className = 'terminal-line ' + cls;
+  div.innerHTML = text;
+  t.appendChild(div);
+  t.scrollTop = t.scrollHeight;
+}
+
+function submitPayload() {
+  const lab = currentLab;
+  dbSnapshot = JSON.parse(JSON.stringify(db));
+
+  addTerminalLine('t-info', '');
+  addTerminalLine('t-prompt', `mysql> -- Lab ${lab.id}: ${lab.title}`);
+  addTerminalLine('t-query', lab.buildQuery(fieldValues).split('\n').join('<br>'));
+
+  const result = lab.execute(fieldValues);
+  renderDbView();
+
+  if (result.success) {
+    addTerminalLine('t-ok', '✓ ' + result.msg);
+    if (!solvedLabs.has(lab.id)) {
+      solvedLabs.add(lab.id);
+      document.getElementById('solved-count').textContent = solvedLabs.size + '/9';
+    }
+    const banner = document.getElementById('result-banner');
+    banner.className = 'result-banner success';
+    banner.textContent = result.msg;
+    document.getElementById('solved-overlay').style.display = 'block';
+    renderSidebar();
+  } else {
+    addTerminalLine('t-error', '✗ ' + result.msg);
+    const banner = document.getElementById('result-banner');
+    banner.className = 'result-banner fail';
+    banner.textContent = result.msg;
+  }
+}
+
+function selectLab(id) {
+  currentLab = labs.find(l => l.id === id);
+  resetDb();
+  dbSnapshot = null;
+  document.getElementById('terminal').innerHTML = '<div class="terminal-line t-info">// Lab ' + id + ' loaded — enter your payload and execute</div>';
+  renderAll();
+}
+
+function resetLab() {
+  resetDb();
+  dbSnapshot = null;
+  document.getElementById('terminal').innerHTML = '<div class="terminal-line t-info">// DB reset — try again</div>';
+  renderDbView();
+  document.getElementById('result-banner').className = 'result-banner';
+  document.getElementById('solved-overlay').style.display = 'none';
+}
+
+function renderAll() {
+  renderSidebar();
+  renderLabInfo();
+  renderDbView();
+  renderInputArea();
+}
+
+renderAll();
+</script>
+</body>
+</html>
